@@ -84,7 +84,7 @@ function focus(d){node.classed('fade',n=>n.id!==d.id&&!adj[d.id].has(n.id)).clas
 function clear(){node.classed('fade',false).classed('hot',false);dep.classed('dim',false).classed('hot',false);flow.classed('dim',false);}
 node.on('mouseenter',(e,d)=>{if(!lock)focus(d);}).on('mouseleave',()=>{if(!lock)clear();}).on('click',(e,d)=>{lock=lock===d.id?null:d.id;lock?focus(d):clear();e.stopPropagation();});
 svg.on('click',()=>{lock=null;clear();});
-document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');
+document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');const _mq=matchMedia('(prefers-color-scheme: dark)');if(_mq.matches)document.body.classList.add('dark');_mq.addEventListener('change',e=>document.body.classList.toggle('dark',e.matches));
 const lg=d3.select('#legend');lg.append('span').attr('class','lz').style('font-weight','800').text('FLOWS');
 FLOWS.forEach(f=>{const s=lg.append('span').attr('class','lz');s.append('span').attr('class','ln').style('background',f.color);s.append('span').text(f.label);});
 /*resize noop: fixed viewBox*/void 0;

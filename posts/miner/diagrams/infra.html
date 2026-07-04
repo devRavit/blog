@@ -196,5 +196,5 @@ svg.addEventListener('click',()=>{lock=null;clear();});
 const lg=document.getElementById('legend');
 LEGEND.forEach(x=>{const s=document.createElement('span');s.className='lz';s.style.color=x.c;
   s.innerHTML=`<span class="ln"></span><span style="color:var(--sub)">${x.l}</span>`;lg.appendChild(s);});
-document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');
+document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');const _mq=matchMedia('(prefers-color-scheme: dark)');if(_mq.matches)document.body.classList.add('dark');_mq.addEventListener('change',e=>document.body.classList.toggle('dark',e.matches));
 </script></body></html>
