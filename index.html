@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>devRavit · blog</title>
+<meta name="description" content="devRavit의 개발 블로그 — 만든 것과 만든 방식에 대한 기록."/>
+<style>
+:root{
+  --bg:#fbfaf8;--fg:#20242b;--sub:#6a7280;--line:#e7e3dc;--card:#ffffff;--accent:#3b82f6;--maxw:760px;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0f1216;--fg:#e7ecf2;--sub:#98a2b0;--line:#232a33;--card:#161b22;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+header.hero{padding:72px 0 30px;border-bottom:1px solid var(--line)}
+header.hero h1{font-size:34px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+header.hero p{margin:0;color:var(--sub);font-size:16px}
+header.hero .links{margin-top:16px;display:flex;gap:16px;font-size:14px}
+header.hero .links a{color:var(--accent);text-decoration:none;font-weight:700}
+main{padding:34px 0 70px}
+.post{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:16px;
+  padding:22px 24px;margin:0 0 18px;background:var(--card);transition:transform .12s,box-shadow .12s,border-color .12s}
+.post:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(20,24,31,.10);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.post .date{font-size:12.5px;color:var(--sub);font-weight:700;letter-spacing:.03em}
+.post h2{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:6px 0 8px;line-height:1.32}
+.post p{margin:0 0 14px;color:var(--sub);font-size:15px;line-height:1.65}
+.post .tags{display:flex;gap:8px;flex-wrap:wrap}
+.post .tag{font-size:12px;font-weight:700;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:20px;padding:4px 11px}
+footer{border-top:1px solid var(--line);padding:24px 0 44px;color:var(--sub);font-size:13px}
+footer a{color:var(--accent);text-decoration:none}
+@media (max-width:640px){header.hero h1{font-size:28px}header.hero{padding:52px 0 24px}body{font-size:16px}}
+</style>
+</head><body>
+<header class="hero"><div class="wrap">
+  <h1>devRavit · blog</h1>
+  <p>만든 것과, 만든 방식에 대한 기록.</p>
+  <div class="links">
+    <a href="https://github.com/devRavit" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</div></header>
+
+<main><div class="wrap">
+  <a class="post" href="posts/miner/">
+    <div class="date">2026 · 회고</div>
+    <h2>AI 에이전트로, AI 에이전트를 만들다 — miner 개발 회고</h2>
+    <p>LLM 자율매매 에이전트 <b>miner</b>를 혼자 3주에 만든 이야기. LLM·Koog·vector DB로 에이전트를 처음 만든 기술(LLM AI 엔지니어링)과, 그 에이전트를 만들어낸 자율 개발 루프(Loop 엔지니어링). 인터랙티브 서비스·인프라 아키텍처 포함.</p>
+    <div class="tags">
+      <span class="tag">LLM AI 엔지니어링</span>
+      <span class="tag">Loop 엔지니어링</span>
+      <span class="tag">에이전트 개발</span>
+      <span class="tag">개발 라이프사이클</span>
+    </div>
+  </a>
+</div></main>
+
+<footer><div class="wrap">
+  © 2026 <a href="https://github.com/devRavit">@devRavit</a>
+</div></footer>
+</body></html>
