@@ -3,20 +3,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>miner · 인프라 아키텍처 (인터랙티브)</title>
 <style>
-  :root{
-    --bg:#f6f7f9; --grid:#e7eaf0; --card:#ffffff; --ink:#1e293b; --sub:#64748b;
-    --zline:#cbd5e1; --edge:#94a3b8; --shadow:0 6px 18px rgba(30,41,59,.10); --hi:0 10px 26px rgba(30,41,59,.18);
-  }
-  body.dark{
-    --bg:#0d1117; --grid:#1b2333; --card:#171e2b; --ink:#e8eef6; --sub:#93a1b3;
-    --zline:#33405a; --edge:#5b6a7d; --shadow:0 8px 22px rgba(0,0,0,.5); --hi:0 12px 30px rgba(0,0,0,.65);
-  }
+  :root{--bg:#f6f7f9;--grid:#e7eaf0;--card:#ffffff;--ink:#1e293b;--sub:#64748b;--zline:#cbd5e1;--edge:#94a3b8;--shadow:0 6px 18px rgba(30,41,59,.10);--hi:0 10px 26px rgba(30,41,59,.18)}
+  body.dark{--bg:#0d1117;--grid:#1b2333;--card:#171e2b;--ink:#e8eef6;--sub:#93a1b3;--zline:#33405a;--edge:#5b6a7d;--shadow:0 8px 22px rgba(0,0,0,.5);--hi:0 12px 30px rgba(0,0,0,.65)}
   *{box-sizing:border-box} html,body{margin:0;height:100%}
-  body{background:
-      radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 0) 0 0/26px 26px,
-      var(--bg);
-    color:var(--ink); overflow:hidden;
-    font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif}
+  body{background:radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 0) 0 0/30px 30px,var(--bg);color:var(--ink);overflow:hidden;font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif}
   #top{position:fixed;top:14px;left:20px;right:20px;z-index:20;display:flex;align-items:center;gap:14px;pointer-events:none}
   #top h1{font-size:15px;font-weight:800;margin:0;letter-spacing:-.01em}
   #top .sub{font-size:12px;color:var(--sub);font-weight:600}
@@ -25,9 +15,9 @@
   #legend .ln{width:20px;height:0;border-top:3px solid currentColor;border-radius:2px}
   #toggle{pointer-events:auto;cursor:pointer;border:1px solid var(--zline);background:var(--card);color:var(--ink);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;box-shadow:var(--shadow)}
   svg{width:100vw;height:100vh;display:block}
-  .zone-box{fill:var(--zc);fill-opacity:.05;stroke:var(--zc);stroke-opacity:.42;stroke-width:1.5;stroke-dasharray:7 6;rx:20}
-  .zone-tag rect{fill:var(--zc);rx:9}
-  .zone-tag text{fill:#fff;font-size:12px;font-weight:800;letter-spacing:.02em}
+  .zone-box{fill:var(--zc);fill-opacity:.05;stroke:var(--zc);stroke-opacity:.42;stroke-width:1.5;stroke-dasharray:7 6}
+  .zone-tag rect{fill:var(--zc)}
+  .zone-tag text{fill:#fff;font-size:13px;font-weight:800;letter-spacing:.02em}
   .edge{fill:none;stroke:var(--ec);stroke-width:2.2;opacity:.62;transition:opacity .18s,stroke-width .18s}
   .edge.flow{stroke-dasharray:9 7;animation:march 2.6s linear infinite}
   .edge.dep{stroke:var(--edge);stroke-width:1.6;opacity:.34;stroke-dasharray:3 5}
@@ -36,9 +26,9 @@
   .elabel{font-size:11px;font-weight:700;fill:var(--ec);paint-order:stroke;stroke:var(--bg);stroke-width:4px;pointer-events:none;transition:opacity .18s}
   .elabel.dim{opacity:.08}
   .card{cursor:pointer;transition:opacity .18s}
-  .card .box{fill:var(--card);stroke:var(--zline);stroke-width:1.2;rx:13;filter:drop-shadow(var(--shadow))}
-  .card .accent{fill:var(--zc);rx:3}
-  .card .badge{fill:var(--zc);fill-opacity:.14;rx:9}
+  .card .box{fill:var(--card);stroke:var(--zline);stroke-width:1.2;filter:drop-shadow(var(--shadow))}
+  .card .accent{fill:var(--zc)}
+  .card .badge{fill:var(--zc);fill-opacity:.14}
   .card .ic{font-size:18px;dominant-baseline:central;text-anchor:middle}
   .card .t{font-size:13.5px;font-weight:800;fill:var(--ink)}
   .card .s{font-size:10.5px;font-weight:600;fill:var(--sub)}
@@ -48,69 +38,77 @@
 </style></head><body>
 <div id="top">
   <h1>miner · 인프라 아키텍처</h1>
-  <span class="sub">개발 → CD → 런타임 · 데이터 · 외부 연동</span>
+  <span class="sub">개발 루프(병렬) → CI → CD → 런타임 · 데이터 · 외부</span>
   <div id="legend"></div>
   <button id="toggle">◐ 다크 / 화이트</button>
 </div>
-<svg id="svg" viewBox="0 0 1240 780" preserveAspectRatio="xMidYMid meet"></svg>
-<div class="hint">노드에 hover·클릭 → 연결 강조 · 드래그 없음(고정 레이아웃)</div>
+<svg id="svg" viewBox="0 0 1600 880" preserveAspectRatio="xMidYMid meet"></svg>
+<div class="hint">노드 hover·클릭 → 연결 강조 · 고정 레이아웃</div>
 <script>
 const ZONES=[
-  {id:'devci', x:28, y:96,  w:250, h:404, label:'개발 · CI',        color:'#6366f1'},
-  {id:'cd',    x:306,y:96,  w:250, h:404, label:'CD 파이프라인',     color:'#3b82f6'},
-  {id:'aws',   x:596,y:64,  w:616, h:300, label:'AWS · 서울 리전',   color:'#f59e0b'},
-  {id:'data',  x:596,y:392, w:250, h:120, label:'데이터',           color:'#10b981'},
-  {id:'ext',   x:872,y:392, w:340, h:300, label:'외부 API',         color:'#8b5cf6'},
-  {id:'notify',x:596,y:540, w:250, h:110, label:'알림 · UI',        color:'#ec4899'},
+  {id:'devloop',x:24, y:86, w:352,h:640,label:'개발 루프 · 병렬', color:'#6366f1'},
+  {id:'ci',     x:400,y:86, w:236,h:640,label:'CI',            color:'#0ea5e9'},
+  {id:'cd',     x:660,y:86, w:232,h:360,label:'CD 파이프라인',  color:'#3b82f6'},
+  {id:'aws',    x:916,y:64, w:660,h:360,label:'런타임 · AWS 서울',color:'#f59e0b'},
+  {id:'data',   x:660,y:478,w:232,h:140,label:'데이터',        color:'#10b981'},
+  {id:'notify', x:916,y:452,w:250,h:150,label:'알림 · UI',      color:'#ec4899'},
+  {id:'external',x:1190,y:452,w:386,h:344,label:'외부 API',     color:'#8b5cf6'},
 ];
 const NODES=[
-  {id:'claudeCode',z:'devci',x:48, y:150,w:210,h:60,ic:'💻',t:'Claude Code',s:'/goal 자율 개발 루프'},
-  {id:'githubRepo',z:'devci',x:48, y:226,w:210,h:60,ic:'🐙',t:'GitHub 저장소',s:'소스 · 이슈 · PR'},
-  {id:'ciActions', z:'devci',x:48, y:302,w:210,h:60,ic:'✅',t:'GitHub Actions',s:'lint · validate · 섹션검사'},
-  {id:'runner',    z:'devci',x:48, y:412,w:210,h:56,ic:'🖥️',t:'self-hosted runner',s:'개발 머신 폴백'},
+  {id:'human', z:'devloop',x:44, y:158,w:312,h:66,ic:'🧑‍💻',t:'개발자 (사람)',   s:'/goal 프롬프트 루프 · 조타'},
+  {id:'agentA',z:'devloop',x:44, y:320,w:152,h:76,ic:'🤖',t:'에이전트 A',     s:'Claude · worktree A'},
+  {id:'agentB',z:'devloop',x:204,y:320,w:152,h:76,ic:'🤖',t:'에이전트 B',     s:'Claude · worktree B'},
+  {id:'wip',   z:'devloop',x:44, y:450,w:312,h:60,ic:'🏷️',t:'wip 라벨',      s:'세션 간 락 · 이슈 겹침 방지'},
 
-  {id:'deployWf', z:'cd',x:326,y:150,w:210,h:60,ic:'📦',t:'Deploy 워크플로',s:'ECR build / push'},
-  {id:'ecr',      z:'cd',x:326,y:226,w:210,h:60,ic:'🐳',t:'Amazon ECR',s:'이미지 :version · :latest'},
-  {id:'deployHub',z:'cd',x:326,y:302,w:210,h:60,ic:'🔀',t:'deployment-hub',s:'SSH pull → restart'},
-  {id:'ghRelease',z:'cd',x:326,y:412,w:210,h:56,ic:'🏷️',t:'GitHub Release',s:'CHANGELOG 자동 태깅'},
+  {id:'githubRepo',z:'ci',x:418,y:178,w:200,h:64,ic:'🐙',t:'GitHub 저장소',s:'소스 · 이슈 · PR'},
+  {id:'ciActions', z:'ci',x:418,y:308,w:200,h:64,ic:'✅',t:'GitHub Actions',s:'lint · validate'},
+  {id:'runner',    z:'ci',x:418,y:410,w:200,h:56,ic:'🖥️',t:'self-hosted runner',s:'개발 머신 폴백'},
 
-  {id:'lightsail',z:'aws',x:624,y:150,w:264,h:86,ic:'☁️',t:'AWS Lightsail',s:'Docker 컨테이너 · miner (서울)',big:1},
-  {id:'secrets',  z:'aws',x:936,y:150,w:250,h:62,ic:'🔐',t:'Secrets Manager',s:'부팅 시 주입'},
-  {id:'health',   z:'aws',x:936,y:250,w:250,h:60,ic:'❤️',t:'헬스체크',s:'/health · /info 검증'},
+  {id:'deployWf', z:'cd',x:676,y:156,w:200,h:60,ic:'📦',t:'Deploy',s:'ECR build / push'},
+  {id:'ecr',      z:'cd',x:676,y:232,w:200,h:60,ic:'🐳',t:'Amazon ECR',s:'이미지 :version'},
+  {id:'deployHub',z:'cd',x:676,y:308,w:200,h:60,ic:'🔀',t:'deployment-hub',s:'SSH pull → restart'},
+  {id:'ghRelease',z:'cd',x:676,y:392,w:200,h:52,ic:'🏷️',t:'GitHub Release',s:'CHANGELOG 태깅'},
 
-  {id:'atlas',z:'data',x:620,y:426,w:206,h:66,ic:'🍃',t:'MongoDB Atlas',s:'journal + brain (Vector Search)'},
+  {id:'lightsail',z:'aws',x:944,y:150,w:264,h:86,ic:'☁️',t:'AWS Lightsail',s:'Docker · miner (서울)',big:1},
+  {id:'secrets',  z:'aws',x:1252,y:150,w:296,h:62,ic:'🔐',t:'Secrets Manager',s:'부팅 시 주입'},
+  {id:'health',   z:'aws',x:1252,y:252,w:296,h:60,ic:'❤️',t:'헬스체크',s:'/health · /info'},
 
-  {id:'toss',  z:'ext',x:892,y:428,w:150,h:52,ic:'🟦',t:'토스증권 API',s:'시세·계좌·주문'},
-  {id:'gemini',z:'ext',x:1052,y:428,w:150,h:52,ic:'✨',t:'Google Gemini',s:'관측·중간추론'},
-  {id:'kis',   z:'ext',x:892,y:492,w:150,h:52,ic:'🟧',t:'KIS API',s:'발굴·보강'},
-  {id:'openai',z:'ext',x:1052,y:492,w:150,h:52,ic:'🤖',t:'OpenAI GPT',s:'최종 판단'},
-  {id:'fred',  z:'ext',x:892,y:556,w:150,h:52,ic:'📈',t:'FRED',s:'매크로'},
-  {id:'news',  z:'ext',x:1052,y:556,w:150,h:52,ic:'📰',t:'뉴스 소스',s:'RSS·검색 API'},
+  {id:'atlas',z:'data',x:678,y:516,w:196,h:66,ic:'🍃',t:'MongoDB Atlas',s:'journal + Vector Search'},
 
-  {id:'discord',z:'notify',x:620,y:566,w:206,h:60,ic:'💬',t:'Discord',s:'webhook · LIVE 승인'},
+  {id:'discord',z:'notify',x:936,y:478,w:210,h:60,ic:'💬',t:'Discord',s:'webhook · LIVE 승인'},
+
+  {id:'toss',  z:'external',x:1210,y:492,w:170,h:52,ic:'🟦',t:'토스증권',s:'시세·계좌·주문'},
+  {id:'gemini',z:'external',x:1394,y:492,w:170,h:52,ic:'✨',t:'Gemini',s:'관측·추론'},
+  {id:'kis',   z:'external',x:1210,y:556,w:170,h:52,ic:'🟧',t:'KIS',s:'발굴·보강'},
+  {id:'openai',z:'external',x:1394,y:556,w:170,h:52,ic:'🤖',t:'OpenAI GPT',s:'최종 판단'},
+  {id:'fred',  z:'external',x:1210,y:620,w:170,h:52,ic:'📈',t:'FRED',s:'매크로'},
+  {id:'news',  z:'external',x:1394,y:620,w:170,h:52,ic:'📰',t:'뉴스',s:'RSS·검색'},
 ];
-// flows: 색 있는 방향 흐름 / dep: 흐릿한 보조선
 const EDGES=[
-  {f:'claudeCode',t:'githubRepo',c:'#3b82f6',l:'push',flow:1},
-  {f:'githubRepo',t:'ciActions', c:'#3b82f6',l:'PR · validate',flow:1},
-  {f:'ciActions', t:'runner',    dep:1},
-  {f:'ciActions', t:'deployWf',  c:'#3b82f6',l:'머지',flow:1},
-  {f:'deployWf',  t:'ecr',       c:'#3b82f6',l:'이미지 push',flow:1},
-  {f:'deployWf',  t:'ghRelease', dep:1},
-  {f:'ecr',       t:'deployHub', c:'#3b82f6',l:'dispatch',flow:1},
-  {f:'deployHub', t:'lightsail', c:'#3b82f6',l:'SSH pull · restart',flow:1},
-  {f:'lightsail', t:'health',    c:'#3b82f6',l:'부팅 검증',flow:1},
-  {f:'lightsail', t:'secrets',   c:'#f59e0b',l:'부팅 주입',flow:1},
-  {f:'lightsail', t:'atlas',     c:'#10b981',l:'적재 · 회상',flow:1},
-  {f:'lightsail', t:'toss',      c:'#10b981',l:'시세 · 집행',flow:1},
-  {f:'lightsail', t:'gemini',    c:'#10b981',l:'추론',flow:1},
-  {f:'lightsail', t:'openai',    c:'#10b981',flow:1},
-  {f:'lightsail', t:'discord',   c:'#ec4899',l:'알림 · 승인',flow:1},
-  {f:'lightsail', t:'kis',  dep:1},
-  {f:'lightsail', t:'fred', dep:1},
-  {f:'lightsail', t:'news', dep:1},
+  {f:'human',t:'agentA',c:'#6366f1',l:'/goal',flow:1},
+  {f:'human',t:'agentB',c:'#6366f1',l:'/goal',flow:1},
+  {f:'agentA',t:'human',dep:1,l:'결과 → 재프롬프트'},
+  {f:'agentA',t:'wip',dep:1},{f:'agentB',t:'wip',dep:1},
+  {f:'agentA',t:'githubRepo',c:'#6366f1',l:'push',flow:1},
+  {f:'agentB',t:'githubRepo',c:'#6366f1',l:'push',flow:1},
+  {f:'githubRepo',t:'ciActions',c:'#0ea5e9',l:'PR · validate',flow:1},
+  {f:'ciActions',t:'runner',dep:1},
+  {f:'ciActions',t:'deployWf',c:'#3b82f6',l:'머지',flow:1},
+  {f:'deployWf',t:'ecr',c:'#3b82f6',l:'이미지 push',flow:1},
+  {f:'deployWf',t:'ghRelease',dep:1},
+  {f:'ecr',t:'deployHub',c:'#3b82f6',l:'dispatch',flow:1},
+  {f:'deployHub',t:'lightsail',c:'#3b82f6',l:'SSH pull · restart',flow:1},
+  {f:'lightsail',t:'health',c:'#3b82f6',l:'부팅 검증',flow:1},
+  {f:'lightsail',t:'secrets',c:'#f59e0b',l:'부팅 주입',flow:1},
+  {f:'lightsail',t:'atlas',c:'#10b981',l:'적재 · 회상',flow:1},
+  {f:'lightsail',t:'toss',c:'#10b981',l:'시세 · 집행',flow:1},
+  {f:'lightsail',t:'gemini',c:'#10b981',l:'추론',flow:1},
+  {f:'lightsail',t:'openai',c:'#10b981',flow:1},
+  {f:'lightsail',t:'discord',c:'#ec4899',l:'알림 · 승인',flow:1},
+  {f:'lightsail',t:'kis',dep:1},{f:'lightsail',t:'fred',dep:1},{f:'lightsail',t:'news',dep:1},
 ];
 const LEGEND=[
+  {c:'#6366f1',l:'개발 루프 (병렬 · /goal)'},
   {c:'#3b82f6',l:'배포 파이프라인'},
   {c:'#f59e0b',l:'부팅 시크릿'},
   {c:'#10b981',l:'운영 연동'},
@@ -123,12 +121,10 @@ const byId=Object.fromEntries(NODES.map(n=>[n.id,n]));
 const zById=Object.fromEntries(ZONES.map(z=>[z.id,z]));
 const el=(t,a={})=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
 const center=n=>({x:n.x+n.w/2,y:n.y+n.h/2});
-// 두 사각형 중심을 잇는 선이 소스/타깃 테두리와 만나는 점
 function border(n,tx,ty){const c=center(n),dx=tx-c.x,dy=ty-c.y;if(!dx&&!dy)return c;
   const sx=(n.w/2)/Math.abs(dx||1e-6), sy=(n.h/2)/Math.abs(dy||1e-6), s=Math.min(sx,sy);
   return {x:c.x+dx*s, y:c.y+dy*s};}
 
-// defs: arrowheads per color
 const defs=el('defs');svg.appendChild(defs);
 const colors=[...new Set(EDGES.filter(e=>e.flow).map(e=>e.c))];
 colors.forEach(c=>{const m=el('marker',{id:'ah_'+c.slice(1),viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'});
@@ -136,11 +132,9 @@ colors.forEach(c=>{const m=el('marker',{id:'ah_'+c.slice(1),viewBox:'0 0 10 10',
 const mdep=el('marker',{id:'ah_dep',viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});
 mdep.appendChild(el('path',{d:'M0,0 L10,5 L0,10 z',fill:'var(--edge)'}));defs.appendChild(mdep);
 
-// layers
 const gZone=el('g'),gEdge=el('g'),gLbl=el('g'),gNode=el('g');
 [gZone,gEdge,gLbl,gNode].forEach(g=>svg.appendChild(g));
 
-// zones
 ZONES.forEach(z=>{const g=el('g');g.style.setProperty('--zc',z.color);
   g.appendChild(el('rect',{class:'zone-box',x:z.x,y:z.y,width:z.w,height:z.h,rx:20}));
   const tag=el('g',{class:'zone-tag'});
@@ -149,7 +143,6 @@ ZONES.forEach(z=>{const g=el('g');g.style.setProperty('--zc',z.color);
   const tt=el('text',{x:z.x+14+tw/2,y:z.y+3,'text-anchor':'middle'});tt.textContent=z.label;tag.appendChild(tt);
   g.appendChild(tag);gZone.appendChild(g);});
 
-// edges
 const edgeEls=[];
 EDGES.forEach(e=>{const a=byId[e.f],b=byId[e.t];const ca=center(a),cb=center(b);
   const p1=border(a,cb.x,cb.y),p2=border(b,ca.x,ca.y);
@@ -160,10 +153,9 @@ EDGES.forEach(e=>{const a=byId[e.f],b=byId[e.t];const ca=center(a),cb=center(b);
   else{path.style.setProperty('--ec',e.c);path.setAttribute('marker-end','url(#ah_'+e.c.slice(1)+')');}
   gEdge.appendChild(path);
   let lbl=null;
-  if(e.l){lbl=el('text',{class:'elabel',x:mx,y:my-5,'text-anchor':'middle'});lbl.style.setProperty('--ec',e.c);lbl.textContent=e.l;gLbl.appendChild(lbl);}
+  if(e.l){lbl=el('text',{class:'elabel',x:mx,y:my-5,'text-anchor':'middle'});lbl.style.setProperty('--ec',e.dep?'var(--edge)':e.c);lbl.textContent=e.l;gLbl.appendChild(lbl);}
   edgeEls.push({e,path,lbl});});
 
-// nodes
 const nodeEls={};
 NODES.forEach(n=>{const z=zById[n.z];const g=el('g',{class:'card','data-id':n.id});g.style.setProperty('--zc',z.color);
   g.appendChild(el('rect',{class:'box',x:n.x,y:n.y,width:n.w,height:n.h,rx:13}));
@@ -176,7 +168,6 @@ NODES.forEach(n=>{const z=zById[n.z];const g=el('g',{class:'card','data-id':n.id
   const ss=el('text',{class:'s',x:tx,y:n.y+n.h/2+13});ss.textContent=n.s;g.appendChild(ss);
   gNode.appendChild(g);nodeEls[n.id]=g;});
 
-// adjacency for highlight
 const adj={};NODES.forEach(n=>adj[n.id]=new Set());
 EDGES.forEach(e=>{adj[e.f].add(e.t);adj[e.t].add(e.f);});
 let lock=null;
@@ -192,9 +183,10 @@ NODES.forEach(n=>{const g=nodeEls[n.id];
   g.addEventListener('click',ev=>{ev.stopPropagation();lock=lock===n.id?null:n.id;lock?focus(n.id):clear();});});
 svg.addEventListener('click',()=>{lock=null;clear();});
 
-// legend + toggle
 const lg=document.getElementById('legend');
 LEGEND.forEach(x=>{const s=document.createElement('span');s.className='lz';s.style.color=x.c;
   s.innerHTML=`<span class="ln"></span><span style="color:var(--sub)">${x.l}</span>`;lg.appendChild(s);});
-document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');const _mq=matchMedia('(prefers-color-scheme: dark)');if(_mq.matches)document.body.classList.add('dark');_mq.addEventListener('change',e=>document.body.classList.toggle('dark',e.matches));
+document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');
+const _mq=matchMedia('(prefers-color-scheme: dark)');if(_mq.matches)document.body.classList.add('dark');
+_mq.addEventListener('change',e=>document.body.classList.toggle('dark',e.matches));
 </script></body></html>
