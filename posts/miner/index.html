@@ -61,19 +61,21 @@ footer.site a{color:var(--accent);text-decoration:none}
 <blockquote>
 <p>국내(KRX)+미국 주식 자율매매 에이전트 <code>miner</code>를 3주에 만들며 있었던 일.
 이 글의 주제는 &quot;무엇을 만들었나&quot;보다 <strong>&quot;어떻게 만들었나&quot;</strong> — 제 개발 방식입니다.
-이야기의 두 심장은 <strong>LLM AI 엔지니어링</strong>(LLM·Koog·vector DB로 에이전트를 만든 기술 — 셋 다 처음이었습니다)과 <strong>Loop 엔지니어링</strong>(그 에이전트를 만든 개발 방식)입니다.</p>
+이야기의 두 심장은 <strong>LLM AI 엔지니어링</strong>(LLM·Koog·vector DB로 에이전트를 만든 기술 — 셋 다 처음이었습니다)과 <strong>Loop 엔지니어링</strong>(이 프로젝트를 굴린 개발 사이클 — 만드는 대상과 무관한 방법론)입니다.</p>
 </blockquote>
 <hr>
 <h2>요약 — 무엇을, 어떻게, 얼마나</h2>
 <p><strong>무엇</strong> — 혼자 3주에 LLM 자율매매 에이전트를 만든 이야기. 기술적으로 가장 새로웠던 두 축:</p>
 <ul>
 <li><strong>LLM AI 엔지니어링</strong> = <em>에이전트를 (처음) 만들기</em>. LLM 통합(Koog)·structured output·메멘토 페르소나·vector DB 회상(RAG) — LLM도 Koog도 vector DB도 다 처음이었다. 한마디로 <em>&quot;에이전트를 프로그래밍한다.&quot;</em></li>
-<li><strong>Loop 엔지니어링</strong> = <em>그 에이전트를 만든 개발 방식</em>. 단발 &quot;guess once&quot;를 <strong>&quot;try → check → fix → repeat&quot;</strong> 로. 검증(테스트·리뷰)을 루프의 한 단계로 내장하고, 되돌리기 어려운 것만 사람이 잡는다.</li>
+<li><strong>Loop 엔지니어링</strong> = <em>이 프로젝트의 개발 사이클(방법론)</em> — 에이전트 기술과는 별개 축. 단발 &quot;guess once&quot;를 <strong>&quot;try → check → fix → repeat&quot;</strong> 로. 검증(테스트·리뷰)을 루프의 한 단계로 내장하고, 되돌리기 어려운 것만 사람이 잡는다.</li>
 </ul>
-<pre><code>  ┌─▶ 이슈(목표) → 코드+테스트(행동) → validate·CI(관측) → 7관점 리뷰(검증) ─┐
-  │                     ▲ 게이트 실패 시 되돌아 반복                           │
-  └── 머지·close(종료) ← 흡수·교정(복구) ←───────────────────────────────────┘
-</code></pre>
+<figure class="figure">
+  <figcaption class="cap"><b>개발 루프 (ReAct)</b><span>진입 → 이슈·행동·관측·검증·복구·종료 → 반복 → 종단점 (무한 루프 아님)</span>
+    <a href="diagrams/loop.html" target="_blank" rel="noopener">전체화면 ↗</a></figcaption>
+  <iframe src="diagrams/loop.html" loading="lazy" title="개발 루프 사이클"></iframe>
+</figure>
+
 <p><strong>실측(3주)</strong> — <code>/goal</code> 킥오프 <strong>22번 → assistant 턴 82,959번</strong>. 토큰 <strong>42B, 그중 99%가 캐시 read</strong>(→ 비용은 &quot;출력&quot;이 아니라 &quot;맥락 × 턴 수&quot;가 결정). 자율성 <strong>31:1</strong>(1시간 이상 무개입 122회, 최대 12.7시간).</p>
 <hr>
 <h2>0. 3주 동안 벌어진 일 (숫자로)</h2>
@@ -117,16 +119,15 @@ footer.site a{color:var(--accent);text-decoration:none}
 <hr>
 <h2>1. 무엇을 만들었나 (배경 한 컷)</h2>
 <p>먼저 대상만 짧게. miner는 <strong>LLM이 스스로 판단하는 자동 주식매매 에이전트</strong>입니다. 흔한 자동매매(사람이 조건식을 짜고 기계가 실행)와 달리, <strong>매 사이클 LLM이 뉴스·시세를 종합해 사람 트레이더처럼 추론</strong>해서 사고 팝니다. 무엇을 매매할지 + 다음에 언제 다시 생각할지까지 스스로 정하는 self-scheduling 에이전트죠.</p>
-<p>안전 모델은 3층입니다 — 도구·관측(결정론) → 판단·집행(AI) → 리스크 가드(결정론, <strong>절대 AI에 안 맡김</strong>). AI는 판단만, 집행은 반드시 결정론 가드를 통과.</p>
-<p>이 에이전트를 <strong>어떤 기술로</strong> 만들었나는 §4(LLM·Koog·vector DB), <strong>어떤 개발 방식으로</strong> 만들었나는 §5(루프)에서 다룹니다. 트레이딩 시스템 전체 골격과 마일스톤은 §7입니다.</p>
-<p>그 miner를 한 장으로 보면 이렇습니다 — 트리거가 에이전트를 깨우고, 판단→집행→기록이 도는 시스템입니다. 노드에 hover·클릭하면 연결이 강조됩니다.</p>
 <figure class="figure">
   <figcaption class="cap"><b>서비스 아키텍처</b><span>트리거→판단→집행→기록 · 유기적 시스템 맵 · hover·클릭 강조</span>
     <a href="diagrams/service.html" target="_blank" rel="noopener">전체화면 ↗</a></figcaption>
   <iframe src="diagrams/service.html" loading="lazy" title="miner 서비스 아키텍처"></iframe>
 </figure>
 
-<p><em>↑ 서비스 아키텍처: 색 있는 흐름 = 매매 사이클·유니버스 준비·회상·EOD 회고.</em></p>
+<p><em>↑ 서비스 아키텍처 — 트리거가 에이전트를 깨우고, 판단→집행→기록이 도는 시스템. 노드에 hover·클릭하면 연결이 강조되고, 색 있는 흐름이 매매 사이클·회상·EOD 회고입니다.</em></p>
+<p>안전 모델은 3층입니다 — 도구·관측(결정론) → 판단·집행(AI) → 리스크 가드(결정론, <strong>절대 AI에 안 맡김</strong>). AI는 판단만, 집행은 반드시 결정론 가드를 통과.</p>
+<p>이 에이전트를 <strong>어떤 기술로</strong> 만들었나는 §4(LLM·Koog·vector DB), <strong>어떤 개발 방식으로</strong> 만들었나는 §5(루프)에서 다룹니다. 트레이딩 시스템 전체 골격과 마일스톤은 §7입니다.</p>
 <hr>
 <h2>2. 출발점 — 비전을 코드가 아니라 &quot;문장&quot;으로 박다</h2>
 <p>가장 먼저 한 일은 코드가 아니라 <strong>PRD(요구사항 문서)</strong> 였고, 여기서 스스로에게 규칙을 걸었습니다: <strong>PRD에는 요구사항(WHAT)만, 개발 결정(HOW)은 전부 ADR에.</strong></p>
@@ -214,8 +215,8 @@ footer.site a{color:var(--accent);text-decoration:none}
 <p>에이전트가 &quot;트레이더처럼&quot; 행동하게 하려면 도메인 감각이 필요한데, LLM 일반지식만으론 빈틈이 컸습니다. 그래서 새 개념(watchCondition·주문 유형·리스크 관리)을 설계할 때마다 <strong>실제 증권사 앱/HTS 기능을 웹으로 대조</strong>했습니다. 논리는 이렇습니다 — 증권사가 그 기능을 만든 건 실수요가 있어서이고, 그 수요가 트레이더의 실제 요구이며, 그 요구의 뿌리가 트레이더의 관점이니, 거기서 &quot;AI 트레이더가 어떤 태도로 행동해야 하는지&quot;를 역산할 수 있다는 것. <strong>증권사 기능은 검증된 행동 패턴의 화석</strong>이라, 추측 대신 그 위에 에이전트의 행동 모델을 세웠습니다.</p>
 <p>세 가지(LLM·Koog·vector DB)가 다 처음이었다는 게 이 축을 가장 새롭고 어렵게 만들었고, 동시에 가장 많이 배운 곳이었습니다.</p>
 <hr>
-<h2>5. Loop 엔지니어링 — 그 에이전트를 만든 개발 방식</h2>
-<p>두 번째 축은 그 에이전트를 만들어낸 <strong>개발 방식</strong>, 즉 <strong>Loop 엔지니어링</strong>입니다. 이건 LLM 앱 개발의 한 분과이기도 합니다. AI 애플리케이션 개발은 이렇게 진화해 왔습니다:</p>
+<h2>5. Loop 엔지니어링 — 이 프로젝트의 개발 사이클</h2>
+<p>두 번째 축은 이 프로젝트를 굴린 <strong>개발 사이클</strong> 자체, 즉 <strong>Loop 엔지니어링</strong>입니다. 이건 miner라는 에이전트를 만든 기술(§4)과는 <strong>별개의 축</strong>입니다 — 무엇을 만들든 적용되는, 자율 개발 루프를 설계하는 방법론이죠. (개념 자체는 LLM 앱/에이전트 개발의 한 분과이기도 합니다.) AI 애플리케이션 개발은 이렇게 진화해 왔습니다:</p>
 <pre><code>프롬프트 엔지니어링 → 컨텍스트 엔지니어링 → harness 엔지니어링 → Loop 엔지니어링
    (좋은 한 번의 응답)     (무엇을 보여줄까)     (도구·권한 인프라)    (반복 사이클을 설계)
 </code></pre>

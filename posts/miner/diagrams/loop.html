@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>개발 루프 (ReAct 사이클)</title>
+<style>
+  :root{--bg:#f6f7f9;--grid:#e7eaf0;--card:#fff;--ink:#1e293b;--sub:#64748b;--zline:#cbd5e1;--edge:#94a3b8;--shadow:0 6px 18px rgba(30,41,59,.10);--hi:0 10px 26px rgba(30,41,59,.2)}
+  body.dark{--bg:#0d1117;--grid:#1b2333;--card:#171e2b;--ink:#e8eef6;--sub:#93a1b3;--zline:#33405a;--edge:#5b6a7d;--shadow:0 8px 22px rgba(0,0,0,.5);--hi:0 12px 30px rgba(0,0,0,.65)}
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:radial-gradient(circle at 1px 1px,var(--grid) 1px,transparent 0) 0 0/48px 48px,var(--bg);color:var(--ink);overflow:hidden;font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif}
+  #toggle{position:fixed;top:14px;right:16px;z-index:20;cursor:pointer;border:1px solid var(--zline);background:var(--card);color:var(--ink);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;box-shadow:var(--shadow)}
+  svg{width:100vw;height:100vh;display:block}
+  .arc{fill:none;stroke:var(--ec);stroke-width:5;opacity:.62;transition:opacity .18s,stroke-width .18s}
+  .arc.march{stroke-dasharray:17 13;animation:m 2.6s linear infinite}
+  @keyframes m{to{stroke-dashoffset:-300}}
+  .arc.loop{stroke:var(--edge);stroke-width:3.5;opacity:.5;stroke-dasharray:4 9}
+  .arc.meta{stroke:var(--edge);stroke-width:3.5;opacity:.7}
+  .arc.pause{stroke-dasharray:7 8;opacity:.62}
+  .arc.dim{opacity:.08}.arc.hot{opacity:1;stroke-width:8}
+  .elabel{font-size:19px;font-weight:700;fill:var(--ec);paint-order:stroke;stroke:var(--bg);stroke-width:6px}
+  .card{transition:opacity .18s}
+  .card .box{fill:var(--card);stroke:var(--zline);stroke-width:2.2;filter:drop-shadow(var(--shadow))}
+  .card.meta .box{stroke-dasharray:8 6}
+  .card .accent{fill:var(--zc)}
+  .card .badge{fill:var(--zc);fill-opacity:.15}
+  .card .ic{font-size:38px;text-anchor:middle;dominant-baseline:central}
+  .card .t{font-size:27px;font-weight:800;fill:var(--ink)}
+  .card .s{font-size:19px;font-weight:600;fill:var(--sub)}
+  .card .ph{font-size:18px;font-weight:800;fill:var(--zc)}
+  .card.fade{opacity:.2}.card.hot .box{stroke:var(--zc);stroke-width:4.5;filter:drop-shadow(var(--hi))}
+  #ct1{font-size:38px;font-weight:800;fill:var(--ink);text-anchor:middle}
+  #ct2{font-size:23px;font-weight:700;fill:var(--sub);text-anchor:middle}
+  #ct3{font-size:19px;font-weight:600;fill:var(--sub);text-anchor:middle;opacity:.85}
+</style></head><body>
+<button id="toggle">◐ 다크 / 화이트</button>
+<svg id="svg" viewBox="0 0 1920 1200" preserveAspectRatio="xMidYMid meet"></svg>
+<script>
+const CX=1010, CY=640, R=410, CW=336, CH=128;
+const CYCLE=[
+  {id:'issue', t:'이슈',        s:'왜·무엇·대안',        ph:'목표',             ic:'🎯', c:'#6366f1'},
+  {id:'code',  t:'코드 + 테스트', s:'불변도메인·TDD',      ph:'행동 · Act',       ic:'⌨️', c:'#3b82f6'},
+  {id:'ci',    t:'validate · CI', s:'kover 100% · lint',   ph:'관측 · Observe',   ic:'🔍', c:'#06b6d4'},
+  {id:'review',t:'7관점 리뷰',    s:'다관점 병렬',         ph:'검증 · Verify',    ic:'🧭', c:'#10b981'},
+  {id:'absorb',t:'흡수 · 교정',   s:'발견 흡수',           ph:'복구 · Recover',   ic:'🔧', c:'#f59e0b'},
+  {id:'merge', t:'머지 · close',  s:'rebase → 자동 close', ph:'완결 · Terminate', ic:'✅', c:'#ef4444'},
+];
+CYCLE.forEach((n,i)=>{const a=(-90+i*60)*Math.PI/180;n.x=CX+R*Math.cos(a);n.y=CY+R*Math.sin(a);});
+const META=[
+  {id:'start', t:'시작', s:'/goal 킥오프 · 이슈 큐', ph:'진입점',   ic:'🚀', c:'#64748b', meta:1, x:1010, y:86},
+  {id:'idle',  t:'유휴', s:'백로그 소진 → 새 이슈 대기', ph:'대기',    ic:'💤', c:'#64748b', meta:1, x:238, y:462},
+  {id:'pause', t:'중지', s:'교착 → 사람 청취 대기',     ph:'일시정지', ic:'⏸️', c:'#64748b', meta:1, x:238, y:840},
+];
+const NODES=[...CYCLE,...META];
+const byId=Object.fromEntries(NODES.map(n=>[n.id,n]));
+
+const SVGNS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('svg');
+const el=(t,a={})=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+function border(n,tx,ty){const dx=tx-n.x,dy=ty-n.y;if(!dx&&!dy)return{x:n.x,y:n.y};const sx=(CW/2)/Math.abs(dx||1e-6),sy=(CH/2)/Math.abs(dy||1e-6),s=Math.min(sx,sy);return{x:n.x+dx*s,y:n.y+dy*s};}
+
+// edges: forward cycle(marching·색) / loopback(점선) / entry·exit(meta)
+const EDGES=[
+  {f:'issue',t:'code',kind:'fwd'},{f:'code',t:'ci',kind:'fwd'},{f:'ci',t:'review',kind:'fwd'},
+  {f:'review',t:'absorb',kind:'fwd'},{f:'absorb',t:'merge',kind:'fwd'},
+  {f:'merge',t:'issue',kind:'loop',l:'다음 이슈 · 반복'},
+  {f:'start',t:'issue',kind:'meta',l:'진입'},
+  {f:'merge',t:'idle',kind:'meta',l:'이슈 없음 → 대기'},
+  {f:'idle',t:'issue',kind:'pause',l:'새 이슈 → 재개'},
+  {f:'review',t:'pause',kind:'pause',l:'교착 · 하드블로커'},
+  {f:'pause',t:'issue',kind:'pause',l:'청취 후 복귀'},
+];
+
+const defs=el('defs');svg.appendChild(defs);
+const arrowColors={};CYCLE.forEach(n=>arrowColors[n.c]=1);arrowColors['edge']=1;
+Object.keys(arrowColors).forEach(c=>{const id='ah_'+(c==='edge'?'edge':c.slice(1));const m=el('marker',{id,viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});m.appendChild(el('path',{d:'M0,0 L10,5 L0,10 z',fill:c==='edge'?'var(--edge)':c}));defs.appendChild(m);});
+
+const gArc=el('g'),gLbl=el('g'),gCtr=el('g'),gNode=el('g');[gArc,gLbl,gCtr,gNode].forEach(g=>svg.appendChild(g));
+
+const arcEls=[];
+EDGES.forEach(e=>{const a=byId[e.f],b=byId[e.t];
+  const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+  let cpx=mx,cpy=my;
+  if(e.kind==='fwd'||e.kind==='loop'){const dx=mx-CX,dy=my-CY,dl=Math.hypot(dx,dy)||1;cpx=mx+dx/dl*96;cpy=my+dy/dl*96;}
+  else if(e.kind==='pause'){cpx=mx-190;cpy=my;}
+  const p1=border(a,cpx,cpy),p2=border(b,cpx,cpy);
+  let cls='arc '+(e.kind==='fwd'?'march':e.kind==='loop'?'loop':e.kind==='pause'?'meta pause':'meta');
+  const path=el('path',{class:cls,d:`M${p1.x},${p1.y} Q${cpx},${cpy} ${p2.x},${p2.y}`});
+  const col=e.kind==='fwd'?a.c:'edge';
+  path.setAttribute('marker-end','url(#ah_'+(col==='edge'?'edge':col.slice(1))+')');
+  path.style.setProperty('--ec',e.kind==='fwd'?a.c:'var(--edge)');
+  gArc.appendChild(path);
+  let lbl=null;
+  if(e.l){const lx=(p1.x+cpx+p2.x)/3,ly=(p1.y+cpy+p2.y)/3;lbl=el('text',{class:'elabel',x:lx,y:ly,'text-anchor':'middle'});lbl.style.setProperty('--ec',e.kind==='fwd'?a.c:'var(--edge)');lbl.textContent=e.l;gLbl.appendChild(lbl);}
+  arcEls.push({e,path,lbl});});
+
+const c1=el('text',{id:'ct1',x:CX,y:CY-24});c1.textContent='개발 루프';gCtr.appendChild(c1);
+const c2=el('text',{id:'ct2',x:CX,y:CY+16});c2.textContent='try → check → fix → repeat';gCtr.appendChild(c2);
+const c3=el('text',{id:'ct3',x:CX,y:CY+50});c3.textContent='무한 루프 아님 — 진입점 있음 · 유휴(백로그 소진)·중지(교착)는 새 일 오면 재개';gCtr.appendChild(c3);
+
+const nodeEls={};
+NODES.forEach(n=>{const g=el('g',{class:'card'+(n.meta?' meta':''),'data-id':n.id});g.style.setProperty('--zc',n.c);
+  const x=n.x-CW/2,y=n.y-CH/2;
+  g.appendChild(el('rect',{class:'box',x,y,width:CW,height:CH,rx:22}));
+  g.appendChild(el('rect',{class:'accent',x,y:y+22,width:6,height:CH-44,rx:3}));
+  const bs=60,bx=x+28,by=n.y-bs/2;
+  g.appendChild(el('rect',{class:'badge',x:bx,y:by,width:bs,height:bs,rx:15}));
+  const ic=el('text',{class:'ic',x:bx+bs/2,y:n.y});ic.textContent=n.ic;g.appendChild(ic);
+  const tx=bx+bs+18;
+  const ph=el('text',{class:'ph',x:tx,y:n.y-26});ph.textContent=n.ph;g.appendChild(ph);
+  const tt=el('text',{class:'t',x:tx,y:n.y+5});tt.textContent=n.t;g.appendChild(tt);
+  const ss=el('text',{class:'s',x:tx,y:n.y+32});ss.textContent=n.s;g.appendChild(ss);
+  gNode.appendChild(g);nodeEls[n.id]=g;});
+
+function focus(id){Object.entries(nodeEls).forEach(([k,g])=>g.classList.toggle('fade',k!==id&&!EDGES.some(e=>(e.f===id&&e.t===k)||(e.t===id&&e.f===k))));
+  arcEls.forEach(({e,path,lbl})=>{const on=e.f===id||e.t===id;path.classList.toggle('hot',on);path.classList.toggle('dim',!on);if(lbl)lbl.style.opacity=on?1:.1;});}
+function clear(){Object.values(nodeEls).forEach(g=>g.classList.remove('fade'));arcEls.forEach(({path,lbl})=>{path.classList.remove('hot','dim');if(lbl)lbl.style.opacity=1;});}
+NODES.forEach(n=>{const g=nodeEls[n.id];g.addEventListener('mouseenter',()=>focus(n.id));g.addEventListener('mouseleave',clear);});
+
+document.getElementById('toggle').onclick=()=>document.body.classList.toggle('dark');
+const _mq=matchMedia('(prefers-color-scheme: dark)');if(_mq.matches)document.body.classList.add('dark');
+_mq.addEventListener('change',e=>document.body.classList.toggle('dark',e.matches));
+</script></body></html>
